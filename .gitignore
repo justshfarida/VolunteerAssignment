@@ -36,3 +36,10 @@ build/
 
 ### Mac OS ###
 .DS_Store
+# Ignore compiled classes
+*.class
+
+# IntelliJ
+.idea/
+out/
+
