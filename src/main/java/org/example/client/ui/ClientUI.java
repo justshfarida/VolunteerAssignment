@@ -14,7 +14,7 @@ public class ClientUI extends JFrame {
     private static final Color HOME_BUTTON_COLOR = new Color(255, 105, 180); // Pink for home page buttons
     private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 24);
     private static final Font SUBTITLE_FONT = new Font("Segoe UI", Font.PLAIN, 16);
-    
+
     private CardLayout cardLayout;
     private JPanel mainContentPanel;
     private JComboBox<String>[] preferenceSelectors;
@@ -66,11 +66,11 @@ public class ClientUI extends JFrame {
         btn.setForeground(Color.BLACK);
         btn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(220, 220, 220)),
-            BorderFactory.createEmptyBorder(10, 20, 10, 20)
+                BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                BorderFactory.createEmptyBorder(10, 20, 10, 20)
         ));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        
+
         btn.addActionListener(e -> {
             if (text.equals("My Assignments")) {
                 refreshAssignmentPanel();
@@ -120,9 +120,9 @@ public class ClientUI extends JFrame {
         content.setBackground(Color.WHITE);
 
         String[][] cards = {
-            {"Set Your Preferences", "Choose your top 5 preferred volunteer activities", "My Preferences"},
-            {"View Assignments", "See where you've been assigned to help", "My Assignments"},
-            {"Learn More", "Understand how our matching system works", "About"}
+                {"Set Your Preferences", "Choose your top 5 preferred volunteer activities", "My Preferences"},
+                {"View Assignments", "See where you've been assigned to help", "My Assignments"},
+                {"Learn More", "Understand how our matching system works", "About"}
         };
 
         for (String[] card : cards) {
@@ -139,8 +139,8 @@ public class ClientUI extends JFrame {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(230, 230, 230)),
-            BorderFactory.createEmptyBorder(20, 20, 20, 20)
+                BorderFactory.createLineBorder(new Color(230, 230, 230)),
+                BorderFactory.createEmptyBorder(20, 20, 20, 20)
         ));
         card.setMaximumSize(new Dimension(600, 120));
 
@@ -176,57 +176,57 @@ public class ClientUI extends JFrame {
     }
 
     private JPanel createPreferencesPanel() {
-            JPanel panel = new JPanel(new BorderLayout());
-            panel.setBackground(Color.WHITE);
-            panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
 
-            /* Title */
-            JLabel title = new JLabel("Your Volunteer Preferences");
-            title.setFont(TITLE_FONT);
-            title.setForeground(Color.BLACK);
-            title.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
-            panel.add(title, BorderLayout.NORTH);
+        /* Title */
+        JLabel title = new JLabel("Your Volunteer Preferences");
+        title.setFont(TITLE_FONT);
+        title.setForeground(Color.BLACK);
+        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+        panel.add(title, BorderLayout.NORTH);
 
-            JPanel formPanel = new JPanel();
-            formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
-            formPanel.setBackground(Color.WHITE);
+        JPanel formPanel = new JPanel();
+        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
+        formPanel.setBackground(Color.WHITE);
 
-            /* ------------------------------------------------------------------ */
-            /* ◆ NEW: name field row (goes BEFORE the combo‑boxes)                */
-            JPanel nameRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            nameRow.setBackground(Color.WHITE);
+        /* ------------------------------------------------------------------ */
+        /* ◆ NEW: name field row (goes BEFORE the combo‑boxes)                */
+        JPanel nameRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        nameRow.setBackground(Color.WHITE);
 
-            JLabel nameLabel = new JLabel("Your Name");
-            nameLabel.setPreferredSize(new Dimension(120, 30));
-            nameLabel.setFont(SUBTITLE_FONT);
+        JLabel nameLabel = new JLabel("Your Name");
+        nameLabel.setPreferredSize(new Dimension(120, 30));
+        nameLabel.setFont(SUBTITLE_FONT);
 
-            nameField = new JTextField(20);
-            nameField.setFont(SUBTITLE_FONT);
+        nameField = new JTextField(20);
+        nameField.setFont(SUBTITLE_FONT);
 
-            nameRow.add(nameLabel);
-            nameRow.add(nameField);
-            formPanel.add(nameRow);
+        nameRow.add(nameLabel);
+        nameRow.add(nameField);
+        formPanel.add(nameRow);
+        formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        /* ------------------------------------------------------------------ */
+
+        /* existing combo‑box loop (unchanged) */
+        preferenceSelectors = new JComboBox[5];
+        String[] labels = {"First Choice","Second Choice","Third Choice","Fourth Choice","Fifth Choice"};
+
+        for (int i = 0; i < 5; i++) {
+            JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            row.setBackground(Color.WHITE);
+
+            JLabel label = new JLabel(labels[i]);
+            label.setPreferredSize(new Dimension(120, 30));
+            label.setFont(SUBTITLE_FONT);
+
+            preferenceSelectors[i] = new JComboBox<>(ClientAPI.getAllServices());
+            row.add(label);
+            row.add(preferenceSelectors[i]);
+            formPanel.add(row);
             formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-            /* ------------------------------------------------------------------ */
-
-            /* existing combo‑box loop (unchanged) */
-            preferenceSelectors = new JComboBox[5];
-            String[] labels = {"First Choice","Second Choice","Third Choice","Fourth Choice","Fifth Choice"};
-
-            for (int i = 0; i < 5; i++) {
-                JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
-                row.setBackground(Color.WHITE);
-
-                JLabel label = new JLabel(labels[i]);
-                label.setPreferredSize(new Dimension(120, 30));
-                label.setFont(SUBTITLE_FONT);
-
-                preferenceSelectors[i] = new JComboBox<>(ClientAPI.getAllServices());
-                row.add(label);
-                row.add(preferenceSelectors[i]);
-                formPanel.add(row);
-                formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-            }
+        }
         JScrollPane scrollPane = new JScrollPane(formPanel);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
@@ -248,8 +248,8 @@ public class ClientUI extends JFrame {
         for (int i = 0; i < 5; i++) {
             if (i != currentIndex && selected.equals(preferenceSelectors[i].getSelectedItem())) {
                 JOptionPane.showMessageDialog(this,
-                    "You've already selected '" + selected + "' as another preference.",
-                    "Duplicate Selection", JOptionPane.WARNING_MESSAGE);
+                        "You've already selected '" + selected + "' as another preference.",
+                        "Duplicate Selection", JOptionPane.WARNING_MESSAGE);
                 preferenceSelectors[currentIndex].setSelectedIndex(0);
                 return;
             }
@@ -272,8 +272,8 @@ public class ClientUI extends JFrame {
             if (selected != null && !"Select...".equals(selected)) {
                 if (!uniqueSelections.add(selected)) {
                     JOptionPane.showMessageDialog(this,
-                        "Please remove duplicate selections before submitting.",
-                        "Duplicate Preferences", JOptionPane.ERROR_MESSAGE);
+                            "Please remove duplicate selections before submitting.",
+                            "Duplicate Preferences", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 lastPreferences.add(selected);
@@ -313,8 +313,8 @@ public class ClientUI extends JFrame {
         JPanel assignmentCard = new JPanel(new BorderLayout());
         assignmentCard.setBackground(new Color(245, 245, 245));
         assignmentCard.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(220, 220, 220)),
-            BorderFactory.createEmptyBorder(25, 25, 25, 25)
+                BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                BorderFactory.createEmptyBorder(25, 25, 25, 25)
         ));
         assignmentCard.setMaximumSize(new Dimension(600, 100));
 
@@ -341,8 +341,8 @@ public class ClientUI extends JFrame {
         JPanel prefsCard = new JPanel(new BorderLayout());
         prefsCard.setBackground(new Color(245, 245, 245));
         prefsCard.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(220, 220, 220)),
-            BorderFactory.createEmptyBorder(25, 25, 25, 25)
+                BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                BorderFactory.createEmptyBorder(25, 25, 25, 25)
         ));
         prefsCard.setMaximumSize(new Dimension(600, 200));
 
@@ -373,8 +373,8 @@ public class ClientUI extends JFrame {
         JButton optimizeBtn = createActionButton("Run Optimization", e -> {
             ClientAPI.triggerOptimization();
             JOptionPane.showMessageDialog(this,
-                "Optimization process started. Your assignment will update shortly.",
-                "Optimization", JOptionPane.INFORMATION_MESSAGE);
+                    "Optimization process started. Your assignment will update shortly.",
+                    "Optimization", JOptionPane.INFORMATION_MESSAGE);
         });
 
         JPanel buttonPanel = new JPanel();
@@ -422,17 +422,17 @@ public class ClientUI extends JFrame {
         panel.add(title, BorderLayout.NORTH);
 
         JTextArea aboutText = new JTextArea(
-            "This system helps match volunteers with community service opportunities based on their preferences.\n\n" +
-            "How It Works:\n" +
-            "1. Select your top 5 preferred volunteer activities\n" +
-            "2. Submit your preferences\n" +
-            "3. The system optimizes assignments for all volunteers\n" +
-            "4. View your personalized assignment\n\n" +
-            "Key Features:\n" +
-            "• Weighted preference matching\n" +
-            "• Real-time assignment updates\n" +
-            "• Simple, intuitive interface\n\n" +
-            "Note: All data is temporary and resets when the server restarts."
+                "This system helps match volunteers with community service opportunities based on their preferences.\n\n" +
+                        "How It Works:\n" +
+                        "1. Select your top 5 preferred volunteer activities\n" +
+                        "2. Submit your preferences\n" +
+                        "3. The system optimizes assignments for all volunteers\n" +
+                        "4. View your personalized assignment\n\n" +
+                        "Key Features:\n" +
+                        "• Weighted preference matching\n" +
+                        "• Real-time assignment updates\n" +
+                        "• Simple, intuitive interface\n\n" +
+                        "Note: All data is temporary and resets when the server restarts."
         );
         aboutText.setEditable(false);
         aboutText.setLineWrap(true);
@@ -457,7 +457,7 @@ public class ClientUI extends JFrame {
         btn.setFocusPainted(false);
         btn.setPreferredSize(new Dimension(200, 40));
         btn.addActionListener(action);
-        
+
         btn.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) {
                 btn.setBackground(PRIMARY_COLOR.darker());
