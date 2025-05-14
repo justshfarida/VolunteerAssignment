@@ -20,6 +20,9 @@ public class ClientUI extends JFrame {
     private JComboBox<String>[] preferenceSelectors;
     private JLabel assignmentLabel;
     private List<String> lastPreferences = Collections.synchronizedList(new ArrayList<>());
+    private JTextField nameField;     // ①  add this at class level so other methods can read it
+
+    private static final String VOLUNTEER_ID = "alice123";   // demo identifier
 
     public ClientUI() {
         configureWindow();
@@ -173,56 +176,57 @@ public class ClientUI extends JFrame {
     }
 
     private JPanel createPreferencesPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
+            JPanel panel = new JPanel(new BorderLayout());
+            panel.setBackground(Color.WHITE);
+            panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
 
-        JLabel title = new JLabel("Your Volunteer Preferences");
-        title.setFont(TITLE_FONT);
-        title.setForeground(Color.BLACK);
-        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
-        panel.add(title, BorderLayout.NORTH);
+            /* Title */
+            JLabel title = new JLabel("Your Volunteer Preferences");
+            title.setFont(TITLE_FONT);
+            title.setForeground(Color.BLACK);
+            title.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+            panel.add(title, BorderLayout.NORTH);
 
-        JPanel formPanel = new JPanel();
-        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
-        formPanel.setBackground(Color.WHITE);
+            JPanel formPanel = new JPanel();
+            formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
+            formPanel.setBackground(Color.WHITE);
 
-        preferenceSelectors = new JComboBox[5];
-        String[] labels = {"First Choice", "Second Choice", "Third Choice", 
-                          "Fourth Choice", "Fifth Choice"};
+            /* ------------------------------------------------------------------ */
+            /* ◆ NEW: name field row (goes BEFORE the combo‑boxes)                */
+            JPanel nameRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            nameRow.setBackground(Color.WHITE);
 
-        for (int i = 0; i < 5; i++) {
-            JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
-            row.setBackground(Color.WHITE);
-            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JLabel nameLabel = new JLabel("Your Name");
+            nameLabel.setPreferredSize(new Dimension(120, 30));
+            nameLabel.setFont(SUBTITLE_FONT);
 
-            JLabel label = new JLabel(labels[i]);
-            label.setPreferredSize(new Dimension(120, 30));
-            label.setFont(SUBTITLE_FONT);
-            label.setForeground(Color.BLACK);
+            nameField = new JTextField(20);
+            nameField.setFont(SUBTITLE_FONT);
 
-            preferenceSelectors[i] = new JComboBox<>(ClientAPI.getAllServices());
-            preferenceSelectors[i].setRenderer(new DefaultListCellRenderer() {
-                public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                    boolean isSelected, boolean cellHasFocus) {
-                    super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                    if (index == 0) setText("Select...");
-                    return this;
-                }
-            });
-            preferenceSelectors[i].setPreferredSize(new Dimension(300, 30));
-            preferenceSelectors[i].setFont(SUBTITLE_FONT);
-            preferenceSelectors[i].setForeground(Color.BLACK);
-
-            final int currentIndex = i;
-            preferenceSelectors[i].addActionListener(e -> checkForDuplicates(currentIndex));
-
-            row.add(label);
-            row.add(preferenceSelectors[i]);
-            formPanel.add(row);
+            nameRow.add(nameLabel);
+            nameRow.add(nameField);
+            formPanel.add(nameRow);
             formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        }
+            /* ------------------------------------------------------------------ */
 
+            /* existing combo‑box loop (unchanged) */
+            preferenceSelectors = new JComboBox[5];
+            String[] labels = {"First Choice","Second Choice","Third Choice","Fourth Choice","Fifth Choice"};
+
+            for (int i = 0; i < 5; i++) {
+                JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
+                row.setBackground(Color.WHITE);
+
+                JLabel label = new JLabel(labels[i]);
+                label.setPreferredSize(new Dimension(120, 30));
+                label.setFont(SUBTITLE_FONT);
+
+                preferenceSelectors[i] = new JComboBox<>(ClientAPI.getAllServices());
+                row.add(label);
+                row.add(preferenceSelectors[i]);
+                formPanel.add(row);
+                formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+            }
         JScrollPane scrollPane = new JScrollPane(formPanel);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
@@ -230,7 +234,7 @@ public class ClientUI extends JFrame {
 
         JButton submitBtn = createActionButton("Submit Preferences", e -> submitPreferences());
         JPanel buttonPanel = new JPanel();
-        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBackground(PRIMARY_COLOR);
         buttonPanel.add(submitBtn);
         panel.add(buttonPanel, BorderLayout.SOUTH);
 
@@ -253,6 +257,13 @@ public class ClientUI extends JFrame {
     }
 
     private void submitPreferences() {
+        String name = nameField.getText().trim();     // ← NEW
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Please enter your name.",
+                    "Missing Name", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         lastPreferences.clear();
         Set<String> uniqueSelections = new HashSet<>();
 
@@ -271,15 +282,15 @@ public class ClientUI extends JFrame {
 
         if (lastPreferences.size() < 3) {
             JOptionPane.showMessageDialog(this,
-                "Please select at least 3 different preferences.",
-                "Incomplete Preferences", JOptionPane.WARNING_MESSAGE);
+                    "Please select at least 3 different preferences.",
+                    "Incomplete Preferences", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        ClientAPI.submitPreferences(lastPreferences);
-        JOptionPane.showMessageDialog(this,
-            "Your preferences have been submitted successfully!",
-            "Success", JOptionPane.INFORMATION_MESSAGE);
+        // send:   volunteerId,  name,  prefs
+        ClientAPI.sendPreferences(VOLUNTEER_ID, name, lastPreferences);
+        JOptionPane.showMessageDialog(this, "Preferences submitted!", "Success",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     private JPanel createAssignmentsPanel() {

@@ -4,12 +4,17 @@ import java.util.*;
 
 public class Volunteer {
     private final String name;
+    private final String id;
+
     private final List<Service> preferences; // Sorted by rank: 1st to 5th
 
-    public Volunteer(String name, List<Service> preferences) {
+    public Volunteer(String name, String id, List<Service> preferences) {
         this.name = name;
+        this.id = id;
         this.preferences = new ArrayList<>(preferences); // Defensive copy
+
     }
+    public String getId(){ return id; }
 
     public String getName() {
         return name;
@@ -23,4 +28,5 @@ public class Volunteer {
     public String toString() {
         return name;
     }
+    
 }
