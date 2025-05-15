@@ -6,75 +6,79 @@ import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 
 /**
- * The main welcome screen that volunteers see when they log in
- * Shows a friendly greeting and their available options
+ * The welcoming dashboard volunteers see when they open the app.
+ * Think of this like a friendly reception desk - it greets users 
+ * and shows them where they can go next with clear, inviting options.
  */
 class HomePage extends JPanel {
-    // These numbers control the spacing and make everything look neat
-    private static final int OUTER_PADDING = 40;  // Space around the edges of the whole screen
-    private static final int INNER_PADDING = 20;  // Space inside panels (matches welcome area)
-    private static final int VERTICAL_SPACING = 15; // Space between sections
-    private static final Color BUTTON_COLOR = new Color(43, 234, 240); // Our nice teal button color
+    // These numbers are like the 'spice measurements' for our layout - 
+    // they control how much space goes where to make everything look just right
+    private static final int OUTER_PADDING = 40;    // Space between window edges and content
+    private static final int INNER_PADDING = 20;    // Padding inside cards and welcome area
+    private static final int VERTICAL_SPACING = 15; // Breathing room between sections
+    private static final Color BUTTON_COLOR = new Color(43, 234, 240); // Our signature teal color
 
     /**
-     * Sets up the whole home page with welcome message and option cards
-     * @param frame The main window so we can switch views when buttons are clicked
+     * Builds the entire homepage like assembling a welcoming lobby.
+     * @param frame The app's main window - our 'building' that contains this 'room'
      */
     HomePage(MainFrame frame) {
-        // Basic setup for the whole panel
-        setLayout(new BorderLayout()); // Simple top-to-bottom layout
-        setBackground(Color.WHITE); // Clean white background
-        setBorder(BorderFactory.createEmptyBorder(OUTER_PADDING, OUTER_PADDING, OUTER_PADDING, OUTER_PADDING)); // Add breathing room
+        // Set up the foundation of this 'room'
+        setLayout(new BorderLayout()); // Everything arranged neatly top-to-bottom
+        setBackground(Color.WHITE); // Clean white walls
+        // Add 'breathing space' around the edges so content doesn't feel cramped
+        setBorder(BorderFactory.createEmptyBorder(OUTER_PADDING, OUTER_PADDING, OUTER_PADDING, OUTER_PADDING));
 
-        // Create and add the welcome banner at the top
+        // Hang up our welcome sign at the top
         JPanel welcomePanel = createWelcomePanel();
         add(welcomePanel, BorderLayout.NORTH);
 
-        // Create and add the cards showing volunteer options
-        // We measure the welcome panel's width so cards match exactly
+        // Set up the 'information kiosk' with navigation options
+        // We measure the welcome panel's width so everything lines up perfectly
         JPanel cardsPanel = createCardsPanel(frame, welcomePanel.getPreferredSize().width);
         add(cardsPanel, BorderLayout.CENTER);
     }
 
     /**
-     * Creates the blue welcome banner at the top of the screen
+     * Creates the friendly welcome banner at the top.
+     * Imagine this like a reception desk with a "We're glad you're here!" sign.
      */
     private JPanel createWelcomePanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(220, 235, 245)); // Light blue background
-        // Give it rounded corners with our custom border
+        panel.setBackground(new Color(220, 235, 245)); // Soft, calming blue
+        
+        // Give it nice rounded corners with a subtle border, like a high-end kiosk
         panel.setBorder(BorderFactory.createCompoundBorder(
-            new RoundedBorder(new Color(180, 210, 230), 2, 15), // Light blue border
-            BorderFactory.createEmptyBorder( // Inner padding matches card padding
+            new RoundedBorder(new Color(180, 210, 230), 2, 15), // Light blue frame
+            BorderFactory.createEmptyBorder( // Inner cushioning
                 VERTICAL_SPACING, INNER_PADDING, 
                 VERTICAL_SPACING, INNER_PADDING)
         ));
         
-        // The actual welcome text
+        // The actual welcome message
         JLabel title = new JLabel("Welcome, Dear Volunteer!");
-        title.setFont(MainFrame.TITLE_FONT); // Uses our standard big font
-        title.setHorizontalAlignment(SwingConstants.CENTER); // Centered in the blue bar
+        title.setFont(MainFrame.TITLE_FONT); // Big, friendly letters
+        title.setHorizontalAlignment(SwingConstants.CENTER); // Perfectly centered
         panel.add(title, BorderLayout.CENTER);
         
         return panel;
     }
 
     /**
-     * Creates the container for all the option cards
-     * @param frame Needed for button actions
-     * @param contentWidth The width to make all cards (matches welcome panel)
+     * Builds the panel holding all the navigation cards.
+     * These are like different doors users can choose from.
      */
     private JPanel createCardsPanel(MainFrame frame, int contentWidth) {
         JPanel cardsContainer = new JPanel();
         cardsContainer.setLayout(new BoxLayout(cardsContainer, BoxLayout.Y_AXIS)); // Stack cards vertically
-        cardsContainer.setBackground(Color.WHITE);
-        cardsContainer.setAlignmentX(Component.CENTER_ALIGNMENT);
+        cardsContainer.setBackground(Color.WHITE); // Keep it clean
+        cardsContainer.setAlignmentX(Component.CENTER_ALIGNMENT); // Center everything
 
-        // All the options we want to show volunteers
+        // The different 'doors' we're offering
         String[] cardTitles = {
-            "Set Your Preferences",
-            "View Assignments", 
-            "Learn More"
+            "Set Your Preferences",    // Door #1: Choose activities
+            "View Assignments",       // Door #2: See your schedule
+            "Learn More"              // Door #3: Understand how it works
         };
         
         String[] cardDescriptions = {
@@ -83,18 +87,18 @@ class HomePage extends JPanel {
             "Understand how our matching system works"
         };
 
-        String[] pageIds = {"prefs", "assign", "about"};
+        String[] pageIds = {"prefs", "assign", "about"}; // Where each door leads
 
-        // Create each card and add it to the container
+        // Build and arrange each door
         for (int i = 0; i < cardTitles.length; i++) {
             addCard(cardsContainer, cardTitles[i], cardDescriptions[i], pageIds[i], frame, contentWidth);
-            // Add space between cards, but not after the last one
+            // Add space between doors, but not after the last one
             if (i < cardTitles.length - 1) {
                 cardsContainer.add(Box.createRigidArea(new Dimension(0, VERTICAL_SPACING)));
             }
         }
 
-        // This wrapper centers everything nicely on the screen
+        // Center everything neatly on the page
         JPanel centerWrapper = new JPanel(new GridBagLayout());
         centerWrapper.setBackground(Color.WHITE);
         centerWrapper.add(cardsContainer);
@@ -103,117 +107,162 @@ class HomePage extends JPanel {
     }
 
     /**
-     * Creates an individual option card with title, description and button
+     * Builds one individual navigation card (like crafting a door with a sign).
      */
     private void addCard(JPanel parent, String title, String description, 
                         String page, MainFrame frame, int contentWidth) {
         JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS)); // Stack elements vertically
-        card.setBackground(Color.WHITE);
-        card.setAlignmentX(Component.LEFT_ALIGNMENT); // Everything lines up on the left
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS)); // Arrange contents top-to-bottom
+        card.setBackground(Color.WHITE); // Clean white card
+        card.setAlignmentX(Component.LEFT_ALIGNMENT); // Keep text aligned
         
-        // Match the exact same padding as the welcome panel
+        // Add padding so content isn't squished against edges
         card.setBorder(BorderFactory.createEmptyBorder(
             VERTICAL_SPACING, INNER_PADDING, 
             VERTICAL_SPACING, INNER_PADDING));
         
-        // Make card same width as welcome panel's content area
+        // Make all cards the same width for consistency
         card.setMaximumSize(new Dimension(contentWidth, Integer.MAX_VALUE));
 
-        // Card title (bigger and bold)
+        // --- Card Title ---
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18)); // Bold heading
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         card.add(titleLabel);
-        card.add(Box.createRigidArea(new Dimension(0, 10))); // Small space after title
+        card.add(Box.createRigidArea(new Dimension(0, 10))); // Small gap after title
 
-        // Card description (normal text that wraps nicely)
+        // --- Card Description ---
         JTextArea descText = new JTextArea(description);
-        descText.setEditable(false); // Can't edit this text
-        descText.setBackground(Color.WHITE); // Match card background
-        descText.setFont(MainFrame.TEXT_FONT); // Standard readable font
-        descText.setLineWrap(true); // Make text wrap to next line
-        descText.setWrapStyleWord(true); // Don't break words in middle
+        descText.setEditable(false); // Just for reading
+        descText.setBackground(Color.WHITE); // Match card color
+        descText.setFont(MainFrame.TEXT_FONT); // Easy-to-read text
+        descText.setLineWrap(true); // Text flows to next line
+        descText.setWrapStyleWord(true); // Don't break words awkwardly
         descText.setAlignmentX(Component.LEFT_ALIGNMENT);
-        descText.setBorder(null); // Remove default border
-        descText.setFocusable(false); // Don't let it get focus
+        descText.setBorder(null); // No border around text
+        descText.setFocusable(false); // Can't select text
         card.add(descText);
         card.add(Box.createRigidArea(new Dimension(0, 15))); // Space before button
 
-        // The action button at the bottom of the card
-        JButton actionBtn = createRoundedButton(
-            page.equals("prefs") ? "My Preferences" :
-            page.equals("assign") ? "My Assignments" : "About Services",
+        // --- Action Button ---
+        // Button text changes based on where it leads
+        String buttonText = switch (page) {
+            case "prefs" -> "My Preferences";
+            case "assign" -> "My Assignments";
+            default -> "About Services";
+        };
+        
+        // Create the actual button that responds to touches
+        JButton actionBtn = createInteractiveButton(
+            buttonText,
             BUTTON_COLOR,
             () -> frame.showPage(page) // What happens when clicked
         );
-        actionBtn.setAlignmentX(Component.LEFT_ALIGNMENT); // Line up with text
+        actionBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         card.add(actionBtn);
 
-        parent.add(card);
+        parent.add(card); // Add this completed card to the panel
     }
 
     /**
-     * Creates a nice rounded button with smooth edges
-     * @param text What the button says
-     * @param bgColor Background color (our teal)
-     * @param action What to do when clicked
+     * Creates a button that feels alive and responsive to the user.
+     * It will subtly change color when interacted with - like a physical button would.
      */
-    private JButton createRoundedButton(String text, Color bgColor, Runnable action) {
-        // Custom button that draws itself with rounded corners
+    private JButton createInteractiveButton(String text, Color bgColor, Runnable action) {
+        // Custom button that paints its own attractive shape
         JButton button = new JButton(text) {
+            private boolean isHovered = false;
+            private boolean isPressed = false;
+            
             @Override
             protected void paintComponent(Graphics g) {
-                // First draw the rounded background
                 Graphics2D g2 = (Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground());
+                
+                // Button gets darker when you interact with it
+                Color fillColor = bgColor;
+                if (isPressed) {
+                    fillColor = bgColor.darker().darker(); // Extra dark when pressed
+                } else if (isHovered) {
+                    fillColor = bgColor.darker(); // Slightly dark when hovered
+                }
+                
+                g2.setColor(fillColor);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
                 g2.dispose();
-                // Then let the button draw its text
+                
+                // Paint the text label
                 super.paintComponent(g);
             }
             
             @Override
             protected void paintBorder(Graphics g) {
-                // Draw a subtle border around the button
+                // Outline that also responds to interaction
                 Graphics2D g2 = (Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground().darker());
+                Color borderColor = isPressed ? bgColor.darker().darker().darker() : 
+                                  isHovered ? bgColor.darker().darker() : 
+                                  bgColor.darker();
+                g2.setColor(borderColor);
                 g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 20, 20);
                 g2.dispose();
             }
             
             @Override
             public boolean contains(int x, int y) {
-                // Only respond to clicks inside the rounded shape
+                // Only the rounded area should be clickable
                 return new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 20, 20).contains(x, y);
             }
         };
         
-        // Button styling
-        button.setOpaque(false); // Let the rounded background show through
-        button.setContentAreaFilled(false); // Don't use default rectangle background
-        button.setBorderPainted(false); // We're drawing our own border
-        button.setBackground(bgColor); // Our nice teal color
-        button.setForeground(Color.WHITE); // White text
-        button.setFont(new Font("Segoe UI", Font.BOLD, 14)); // Readable font
-        button.setPreferredSize(new Dimension(180, 40)); // Comfortable button size
+        // Basic button styling
+        button.setOpaque(false);
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setBackground(bgColor);
+        button.setForeground(Color.WHITE);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        button.setPreferredSize(new Dimension(180, 40)); // Comfortable size for fingers
         button.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 20)); // Text padding
-        button.addActionListener(e -> action.run()); // What to do when clicked
+        
+        // What happens when clicked
+        button.addActionListener(e -> action.run());
+        
+        // Make the button respond to mouse movements like a physical button would
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor.darker());
+                button.repaint(); // Show the change immediately
+            }
+            
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor);
+                button.repaint();
+            }
+            
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor.darker().darker());
+                button.repaint();
+            }
+            
+            public void mouseReleased(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor.darker());
+                button.repaint();
+            }
+        });
         
         return button;
     }
 
     /**
-     * Our custom border that draws rounded rectangles
-     * Used for the welcome panel and could be used elsewhere
+     * A special border that gives our welcome panel its rounded corners.
+     * Like a fancy picture frame for our content.
      */
     private static class RoundedBorder extends AbstractBorder {
-        private final Color color; // Border color
-        private final int thickness; // How thick the border is
+        private final Color color; // The color of the frame
+        private final int thickness; // How thick the frame is
         private final int radius; // How round the corners are
-        private final Insets insets; // How much space the border takes up
+        private final Insets insets; // How much space the frame takes up
         
         RoundedBorder(Color color, int thickness, int radius) {
             this.color = color;
@@ -224,11 +273,12 @@ class HomePage extends JPanel {
 
         @Override
         public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-            // Draw the rounded rectangle border with smooth edges
+            // Draw the rounded rectangle with smooth edges
             Graphics2D g2 = (Graphics2D)g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(color);
             g2.setStroke(new BasicStroke(thickness));
+            // Draw slightly inside the boundaries so the stroke doesn't get cut off
             g2.drawRoundRect(
                 x + thickness/2, y + thickness/2,
                 width - thickness, height - thickness,
