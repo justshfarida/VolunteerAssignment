@@ -286,7 +286,14 @@ public class ClientUI extends JFrame {
                     "Incomplete Preferences", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        JOptionPane.showMessageDialog(this,"Preferences submitted!","Success",
+                JOptionPane.INFORMATION_MESSAGE);
 
+        /* 🔵 show prefs immediately */
+        refreshAssignmentPanel();
+
+        /* 🔵 optionally switch pages automatically */
+        cardLayout.show(mainContentPanel,"My Assignments");
         // send:   volunteerId,  name,  prefs
         ClientAPI.sendPreferences(VOLUNTEER_ID, name, lastPreferences);
         JOptionPane.showMessageDialog(this, "Preferences submitted!", "Success",
@@ -367,21 +374,33 @@ public class ClientUI extends JFrame {
         prefsCard.add(prefsText, BorderLayout.CENTER);
         content.add(prefsCard);
 
-        // Store reference for updates
-        panel.putClientProperty("prefsArea", prefsArea);
+        /* ---------- inside createAssignmentsPanel(), replace the optimize button block ---------- */
 
         JButton optimizeBtn = createActionButton("Run Optimization", e -> {
-            ClientAPI.triggerOptimization();
+            ClientAPI.triggerOptimization();      // fire GA
+            /*0ait 1.5 s then fetch assignment once */
+            new java.util.Timer().schedule(new java.util.TimerTask() {
+                public void run() {
+                    try {
+                        String json = ClientAPI.viewAssignmentSync(VOLUNTEER_ID);
+                        SwingUtilities.invokeLater(() -> updateAssignmentDisplay(json));
+                    } catch (Exception ignore) {
+                        /* still “not found” – optimisation not finished yet */
+                    }
+                }
+            }, 1500);
             JOptionPane.showMessageDialog(this,
-                    "Optimization process started. Your assignment will update shortly.",
-                    "Optimization", JOptionPane.INFORMATION_MESSAGE);
+                    "Optimisation started – assignment will appear momentarily.",
+                    "Optimisation", JOptionPane.INFORMATION_MESSAGE);
         });
 
         JPanel buttonPanel = new JPanel();
-        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBackground(PRIMARY_COLOR);
         buttonPanel.add(optimizeBtn);
         panel.add(content, BorderLayout.CENTER);
         panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        ClientAPI.startPolling(VOLUNTEER_ID);
 
         return panel;
     }
