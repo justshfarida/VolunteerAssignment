@@ -1,6 +1,6 @@
 package org.example.client.api;
 
-import com.google.gson.Gson; //Json serialization
+import com.google.gson.Gson;           // For JSON serialization/deserialization
 import com.google.gson.JsonObject;
 
 import java.net.URI;
@@ -13,112 +13,164 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-
 /**
- * Talk to the Volunteer‑Matching server.
- * UI depends on: getAllServices(), sendPreferences(id,name,prefs), triggerOptimization(),
- *                setOnAssignmentReceived(callback)
+ * Handles communication between the client and the volunteer-matching server.
+ *
+ * Exposed methods (used by the UI):
+ * - getAllServices()
+ * - sendPreferences(id, name, prefs)
+ * - triggerOptimization()
+ * - setOnAssignmentReceived(callback)
+ * - startPolling(id)
  */
 public class ClientAPI {
 
-    /* ---------------- configuration ---------------- */
-    private static final String BASE = "http://localhost:8080"; // – root URL of your server.
+    /* ------------------ Configuration ------------------ */
 
+    // Base URL for the backend server (localhost on port 8080)
+    private static final String BASE = "http://localhost:8080";
 
+    // Shared HTTP client instance for all requests
     private static final HttpClient HTTP = HttpClient.newHttpClient();
+
+    // Gson instance for converting objects to/from JSON
     private static final Gson G = new Gson();
+
+    // Polling thread that periodically fetches assignment
     private static ScheduledExecutorService poller;
 
 
-    /* ---------------- static service list ---------------- */
+    /* ------------------ Service List ------------------ */
+
+    // Hardcoded list of available services (used for combo boxes)
     private static final String[] SERVICES = {
             "Soup Kitchen", "Animal Shelter", "Senior Care", "Airport Greeter",
             "Hackathon Mentor", "Beach Cleanup", "Community Garden", "Library Assistant",
             "Youth Mentor", "Disaster Relief"
     };
+
+    // Return a safe clone to avoid exposing the original array
     public static String[] getAllServices() { return SERVICES.clone(); }
 
-    /* ---------------- async callback ---------------- */
+
+    /* ------------------ Assignment Callback ------------------ */
+
+    // A callback to deliver assignment updates (set by UI)
     private static Consumer<String> callback;
-    public static void setOnAssignmentReceived(Consumer<String> cb)
-    { callback = cb; }
 
-    /* --------------------------------------------------- */
-    /*          PUBLIC METHODS USED BY THE UI              */
-    /* --------------------------------------------------- */
-
-    /** POST /preferences  */
-    public static void sendPreferences(String id, String name, List<String> prefs) {
-        Payload p = new Payload(id, name, prefs); //Serialises to JSON with Gson.
-        postAsync("/preferences", G.toJson(p), "prefs");
+    /**
+     * Called by UI to register a function that will be invoked when
+     * a new assignment (or related update) is received from the server.
+     */
+    public static void setOnAssignmentReceived(Consumer<String> cb) {
+        callback = cb;
     }
 
-    /** POST /optimize  */
+
+    /* ------------------ Public API Methods ------------------ */
+
+    /**
+     * Submits volunteer preferences to the server (POST /preferences)
+     */
+    public static void sendPreferences(String id, String name, List<String> prefs) {
+        Payload p = new Payload(id, name, prefs);
+        String json = G.toJson(p);
+        postAsync("/preferences", json, "prefs");
+    }
+
+    /**
+     * Triggers server-side optimization (POST /optimize)
+     */
     public static void triggerOptimization() {
         postAsync("/optimize", "", "opt");
     }
 
-    /** Optionally: synchronous fetch (unused in current UI) */
+    /**
+     * Optionally fetch current assignment synchronously (GET /assignment)
+     */
     public static String viewAssignmentSync(String id) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + "/assignment?volunteerId=" + id))
-                .GET().build();
+                .GET()
+                .build();
         return HTTP.send(req, HttpResponse.BodyHandlers.ofString()).body();
     }
 
-    /* --------------------------------------------------- */
-    /*                 INTERNAL HELPERS                    */
-    /* --------------------------------------------------- */
 
+    /* ------------------ Internal Helpers ------------------ */
+
+    /**
+     * Helper: Send asynchronous POST request and forward result to notify()
+     */
     private static void postAsync(String path, String json, String tag) {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + path))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build();
+
         HTTP.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(r -> notify(tag + ": " + r.body()));
+                .thenAccept(response -> notify(tag + ": " + response.body()));
     }
 
+    /**
+     * Handles the response message and routes meaningful assignment updates to the callback
+     */
     private static void notify(String json) {
         if (callback == null) return;
 
-        /* ▼  Skip ACK messages coming from POST /preferences or /optimize */
-        if (json.startsWith("prefs:") || json.startsWith("opt:"))
-            return;
+        // Filter out boring confirmations like "prefs: ..." or "opt: ..."
+        if (json.startsWith("prefs:") || json.startsWith("opt:")) return;
 
         try {
             JsonObject obj = G.fromJson(json, JsonObject.class);
 
-            if (obj.has("assignment")) {                   // success
+            // Found a real assignment result → pass to UI
+            if (obj.has("assignment")) {
                 callback.accept(obj.get("assignment").getAsString());
                 return;
             }
-            if (obj.has("error")  || obj.has("status"))    // ignore 404 + status
-                return;
-        } catch (Exception ignore) { /* not JSON */ }
 
-        /* fallback – should never happen now */
+            // Ignore system messages like {"error":...} or {"status":...}
+            if (obj.has("error") || obj.has("status")) return;
+
+        } catch (Exception ignore) {
+            // If it's not JSON, ignore it
+        }
+
+        // Fallback (should not usually happen)
         callback.accept(json);
     }
 
-    /**—> polls /assignment every 2 s and notifies callback */
+    /**
+     * Starts polling /assignment every 2 seconds and routes result to callback
+     */
     public static void startPolling(String id) {
-        if (poller != null) return;                       // already running
+        if (poller != null) return;  // Already polling
+
         poller = Executors.newSingleThreadScheduledExecutor();
         poller.scheduleAtFixedRate(() -> {
             try {
-                String json = viewAssignmentSync(id);     // GET /assignment
-                notify(json);                             // push to UI
-            } catch (Exception ignored) { /* 404 until optimized */ }
+                String json = viewAssignmentSync(id);  // GET assignment
+                notify(json);                          // push to callback/UI
+            } catch (Exception ignored) {
+                // Ignore 404 errors (not assigned yet)
+            }
         }, 0, 2, TimeUnit.SECONDS);
     }
 
-    /** stop polling when window closes (optional call from UI) */
+    /**
+     * Stops the polling thread (optional)
+     */
     public static void stopPolling() {
         if (poller != null) poller.shutdownNow();
         poller = null;
     }
-    /* JSON payload for sendPreferences */
+
+    /* ------------------ Internal Payload Class ------------------ */
+
+    /**
+     * Structure used for JSON payload to /preferences
+     */
     private record Payload(String volunteerId, String name, List<String> prefs) {}
 }
