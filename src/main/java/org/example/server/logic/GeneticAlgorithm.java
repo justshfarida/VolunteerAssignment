@@ -12,7 +12,7 @@ public class GeneticAlgorithm {
 
     private final int populationSize = 100;
     private final int generations = 500;
-    private final double mutationRate = 0.02;
+    //private final double mutationRate = 0.02;
 
     public GeneticAlgorithm(List<Volunteer> volunteers, List<Service> services) {
         // ensure all volunteers reference canonical service objects
@@ -54,7 +54,7 @@ public class GeneticAlgorithm {
                 List<Assignment> parent1 = select(population);
                 List<Assignment> parent2 = select(population);
                 List<Assignment> child = crossover(parent1, parent2);
-                mutate(child);
+                //mutate(child);
                 newPopulation.add(child);
             }
     
@@ -190,7 +190,7 @@ public class GeneticAlgorithm {
         return child;
     }
     
-
+/* 
     private void mutate(List<Assignment> assignment) {
         Random rand = new Random();
         Map<Service, Integer> serviceCounts = new HashMap<>();
@@ -221,7 +221,7 @@ public class GeneticAlgorithm {
             }
         }
     }
-    
+*/    
     private boolean isValidAssignment(List<Assignment> assignments) {
         Map<Service, Integer> countMap = new HashMap<>();
         for (Assignment a : assignments) {
