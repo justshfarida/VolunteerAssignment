@@ -5,17 +5,27 @@ import java.util.stream.Collectors;
 import java.util.*;
 import java.util.function.Supplier;
 
+/**
+ * GeneticAlgorithm is a class that implements a genetic algorithm to optimize
+ * the assignment of volunteers to services based on their preferences and service capacities.
+ */
 public class GeneticAlgorithm {
 
     private final List<Volunteer> volunteers;
     private final List<Service> services;
 
-    private final int populationSize = 100;
-    private final int generations = 500;
-    //private final double mutationRate = 0.02;
+    private final int populationSize = 100; // Number of individuals in the population
+    private final int generations = 500;   // Maximum number of generations
+    //private final double mutationRate = 0.02; // Mutation rate (currently commented out)
 
+    /**
+     * Constructs a GeneticAlgorithm instance with the given volunteers and services.
+     * Ensures that all volunteers reference canonical service objects.
+     *
+     * @param volunteers List of volunteers with their preferences.
+     * @param services   List of available services with their capacities.
+     */
     public GeneticAlgorithm(List<Volunteer> volunteers, List<Service> services) {
-        // ensure all volunteers reference canonical service objects
         Map<String, Service> serviceMap = new HashMap<>();
         for (Service s : services) {
             serviceMap.put(s.getName(), s);
@@ -33,12 +43,23 @@ public class GeneticAlgorithm {
             this.volunteers.add(new Volunteer(v.getName(), v.getId(), normalizedPrefs));
         }
     }
-    
 
+    /**
+     * Optimizes the assignment of volunteers to services using the genetic algorithm.
+     *
+     * @return A list of assignments representing the optimized solution.
+     */
     public List<Assignment> optimize() {
         return optimize(this::generateRandomAssignment);
     }
 
+    /**
+     * Optimizes the assignment of volunteers to services using the genetic algorithm.
+     * Falls back to a provided fallback assignment generator if the final assignment is invalid.
+     *
+     * @param fallback A supplier that generates a fallback assignment.
+     * @return A list of assignments representing the optimized solution.
+     */
     public List<Assignment> optimize(Supplier<List<Assignment>> fallback) {
         List<List<Assignment>> population = initializePopulation();
         List<Assignment> best = getBest(population);
@@ -48,13 +69,13 @@ public class GeneticAlgorithm {
     
         for (int gen = 0; gen < generations; gen++) {
             List<List<Assignment>> newPopulation = new ArrayList<>();
-            newPopulation.add(best); // elitism
+            newPopulation.add(best); // Elitism: carry forward the best individual
     
             for (int i = 1; i < populationSize; i++) {
                 List<Assignment> parent1 = select(population);
                 List<Assignment> parent2 = select(population);
                 List<Assignment> child = crossover(parent1, parent2);
-                //mutate(child);
+                //mutate(child); // Mutation step (currently commented out)
                 newPopulation.add(child);
             }
     
@@ -85,8 +106,12 @@ public class GeneticAlgorithm {
     
         return best;
     }
-    
 
+    /**
+     * Initializes the population with random assignments.
+     *
+     * @return A list of randomly generated assignments representing the initial population.
+     */
     private List<List<Assignment>> initializePopulation() {
         List<List<Assignment>> population = new ArrayList<>();
         for (int i = 0; i < populationSize; i++) {
@@ -95,6 +120,11 @@ public class GeneticAlgorithm {
         return population;
     }
 
+    /**
+     * Generates a random assignment of volunteers to services.
+     *
+     * @return A list of assignments representing a random solution.
+     */
     private List<Assignment> generateRandomAssignment() {
         List<Assignment> assignment = new ArrayList<>();
         Map<Service, Integer> serviceCounts = new HashMap<>();
@@ -128,6 +158,12 @@ public class GeneticAlgorithm {
         return assignment;
     }
 
+    /**
+     * Calculates the cost of a given assignment based on volunteer preferences.
+     *
+     * @param assignment A list of assignments to evaluate.
+     * @return The total cost of the assignment.
+     */
     private int calculateCost(List<Assignment> assignment) {
         int totalCost = 0;
     
@@ -146,8 +182,14 @@ public class GeneticAlgorithm {
     
         return totalCost;
     }
-    
 
+    /**
+     * Selects a parent from the population using a selection strategy.
+     * The selection favors individuals with lower costs.
+     *
+     * @param population The current population of assignments.
+     * @return A selected parent assignment.
+     */
     private List<Assignment> select(List<List<Assignment>> population) {
         List<List<Assignment>> sorted = population.stream()
             .sorted(Comparator.comparingInt(this::calculateCost))
@@ -157,8 +199,14 @@ public class GeneticAlgorithm {
         Random rand = new Random();
         return sorted.get(rand.nextInt(eliteSize)); // pick from best few
     }
-    
 
+    /**
+     * Performs crossover between two parent assignments to produce a child assignment.
+     *
+     * @param p1 The first parent assignment.
+     * @param p2 The second parent assignment.
+     * @return A child assignment generated from the parents.
+     */
     private List<Assignment> crossover(List<Assignment> p1, List<Assignment> p2) {
         Random rand = new Random();
         Map<Volunteer, Service> parent1Map = toMap(p1);
@@ -189,39 +237,48 @@ public class GeneticAlgorithm {
     
         return child;
     }
+
+    /*
+     * Mutates an assignment by randomly changing some of its assignments.
+     * Currently commented out.
+     */
+    // private void mutate(List<Assignment> assignment) {
+    //     Random rand = new Random();
+    //     Map<Service, Integer> serviceCounts = new HashMap<>();
     
-/* 
-    private void mutate(List<Assignment> assignment) {
-        Random rand = new Random();
-        Map<Service, Integer> serviceCounts = new HashMap<>();
+    //     // Initialize service counts
+    //     for (Assignment a : assignment) {
+    //         Service s = a.getService();
+    //         serviceCounts.put(s, serviceCounts.getOrDefault(s, 0) + 1);
+    //     }
     
-        // Initialize service counts
-        for (Assignment a : assignment) {
-            Service s = a.getService();
-            serviceCounts.put(s, serviceCounts.getOrDefault(s, 0) + 1);
-        }
+    //     for (int i = 0; i < assignment.size(); i++) {
+    //         Assignment a = assignment.get(i);
+    //         Volunteer v = a.getVolunteer();
     
-        for (int i = 0; i < assignment.size(); i++) {
-            Assignment a = assignment.get(i);
-            Volunteer v = a.getVolunteer();
+    //         if (rand.nextDouble() < mutationRate) {
+    //             List<Service> prefs = v.getPreferences();
+    //             Collections.shuffle(prefs); // randomize choices
     
-            if (rand.nextDouble() < mutationRate) {
-                List<Service> prefs = v.getPreferences();
-                Collections.shuffle(prefs); // randomize choices
-    
-                for (Service newService : prefs) {
-                    if (serviceCounts.getOrDefault(newService, 0) < newService.getCapacity()) {
-                        Service oldService = a.getService();
-                        serviceCounts.put(oldService, serviceCounts.get(oldService) - 1);
-                        assignment.set(i, new Assignment(v, newService));
-                        serviceCounts.put(newService, serviceCounts.getOrDefault(newService, 0) + 1);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-*/    
+    //             for (Service newService : prefs) {
+    //                 if (serviceCounts.getOrDefault(newService, 0) < newService.getCapacity()) {
+    //                     Service oldService = a.getService();
+    //                     serviceCounts.put(oldService, serviceCounts.get(oldService) - 1);
+    //                     assignment.set(i, new Assignment(v, newService));
+    //                     serviceCounts.put(newService, serviceCounts.getOrDefault(newService, 0) + 1);
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+    /**
+     * Validates an assignment to ensure no service exceeds its capacity.
+     *
+     * @param assignments The assignment to validate.
+     * @return True if the assignment is valid, false otherwise.
+     */
     private boolean isValidAssignment(List<Assignment> assignments) {
         Map<Service, Integer> countMap = new HashMap<>();
         for (Assignment a : assignments) {
@@ -236,14 +293,25 @@ public class GeneticAlgorithm {
         }
         return true;
     }
-    
 
+    /**
+     * Retrieves the best assignment from the population based on cost.
+     *
+     * @param population The current population of assignments.
+     * @return The best assignment in the population.
+     */
     private List<Assignment> getBest(List<List<Assignment>> population) {
         return population.stream()
                 .min(Comparator.comparingInt(this::calculateCost))
                 .orElse(null);
     }
 
+    /**
+     * Converts a list of assignments to a map for easier lookup.
+     *
+     * @param list The list of assignments to convert.
+     * @return A map of volunteers to their assigned services.
+     */
     private Map<Volunteer, Service> toMap(List<Assignment> list) {
         Map<Volunteer, Service> map = new HashMap<>();
         for (Assignment a : list) {
