@@ -58,6 +58,11 @@ public class ServerHandler {
         server.start();
         System.out.printf("Server running on http://localhost:%d (%d threads)%n",
                 PORT, threads);
+
+        /* ---------- start WebSocket server ---------- */
+        new AssignmentWebSocketServer(8081).start();   // << ❶
+
+        System.out.printf("HTTP on :%d  |  WS on :8081%n", PORT);
     }
 
     /* ====================== HANDLERS ========================== */
@@ -98,6 +103,14 @@ public class ServerHandler {
             List<Assignment> result = LOGIC.runOptimization();
             ASSIGNMENT_STORE.clear();
             result.forEach(a -> ASSIGNMENT_STORE.put(a.getVolunteer().getId(), a));
+
+            /* ---------- broadcast every assignment ---------- */
+            result.forEach(a -> AssignmentWebSocketServer.broadcastToAll(   // << ❷
+                    G.toJson(Map.of(
+                            "volunteerId", a.getVolunteer().getId(),
+                            "assignment",  a.getService().getName()
+                    ))));
+
             send(ex, 200, "{\"status\":\"optimized\"}");
         } catch (Exception e) {
             send(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");

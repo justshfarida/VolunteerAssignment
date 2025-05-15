@@ -97,7 +97,8 @@ class AssignmentsPage extends JPanel {
                 }));
 
 
-        ClientAPI.startPolling(MainFrame.VolunteerIdentity.id());
+        ClientAPI.connectWebSocket(MainFrame.VolunteerIdentity.id());
+
     }
 
     /* helper for a grey rounded card */
