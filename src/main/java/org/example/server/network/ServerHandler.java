@@ -64,6 +64,8 @@ public class ServerHandler {
 
     /** POST /preferences  JSON: {volunteerId, name, prefs:[...]}  */
     private static void handlePrefs(HttpExchange ex) throws IOException {
+        System.out.println("🔵 " + ex.getRequestMethod() + " " + ex.getRequestURI());
+
         if (!ex.getRequestMethod().equalsIgnoreCase("POST")) {
             ex.sendResponseHeaders(405, -1); return;
         }
@@ -81,12 +83,14 @@ public class ServerHandler {
         List<Service> prefObjs = new ArrayList<>();
         p.prefs.forEach(n -> { if (byName.containsKey(n)) prefObjs.add(byName.get(n)); });
 
-        LOGIC.addVolunteer(new Volunteer(p.volunteerId, p.name, prefObjs));
+        LOGIC.addVolunteer(new Volunteer(p.name, p.volunteerId, prefObjs));
         send(ex, 200, "{\"status\":\"stored\"}");
     }
 
     /** POST /optimize  -> runs GA & stores assignments  */
     private static void handleOptimize(HttpExchange ex) throws IOException {
+        System.out.println("🔵 " + ex.getRequestMethod() + " " + ex.getRequestURI());
+
         if (!ex.getRequestMethod().equalsIgnoreCase("POST")) {
             ex.sendResponseHeaders(405, -1); return;
         }
@@ -102,6 +106,8 @@ public class ServerHandler {
 
     /** GET /assignment?volunteerId=abc  */
     private static void handleAssignment(HttpExchange ex) throws IOException {
+        System.out.println("🔵 " + ex.getRequestMethod() + " " + ex.getRequestURI());
+
         if (!ex.getRequestMethod().equalsIgnoreCase("GET")) {
             ex.sendResponseHeaders(405, -1);  return;
         }
