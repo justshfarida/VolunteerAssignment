@@ -119,7 +119,7 @@ class PreferencesPage extends JPanel {
         }
 
         /* send to server */
-        ClientAPI.sendPreferences(MainFrame.USER_ID, name, lastSubmitted);
+        ClientAPI.sendPreferences(MainFrame.VolunteerIdentity.id(), name, lastSubmitted);
 
         JOptionPane.showMessageDialog(this, "Preferences stored!");
         frame.showPage("assign");                 // go to assignments

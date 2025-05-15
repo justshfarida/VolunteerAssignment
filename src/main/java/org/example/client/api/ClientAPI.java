@@ -1,6 +1,7 @@
 package org.example.client.api;
 
 import com.google.gson.Gson; //Json serialization
+import com.google.gson.JsonObject;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -79,10 +80,29 @@ public class ClientAPI {
                 .thenAccept(r -> notify(tag + ": " + r.body()));
     }
 
-    private static void notify(String txt) {
-        if (callback != null) callback.accept(txt);
+    private static void notify(String json) {
+        if (callback == null) return;
+
+        /* ▼  Skip ACK messages coming from POST /preferences or /optimize */
+        if (json.startsWith("prefs:") || json.startsWith("opt:"))
+            return;
+
+        try {
+            JsonObject obj = G.fromJson(json, JsonObject.class);
+
+            if (obj.has("assignment")) {                   // success
+                callback.accept(obj.get("assignment").getAsString());
+                return;
+            }
+            if (obj.has("error")  || obj.has("status"))    // ignore 404 + status
+                return;
+        } catch (Exception ignore) { /* not JSON */ }
+
+        /* fallback – should never happen now */
+        callback.accept(json);
     }
-    /** startPolling("alice123") —> polls /assignment every 2 s and notifies callback */
+
+    /**—> polls /assignment every 2 s and notifies callback */
     public static void startPolling(String id) {
         if (poller != null) return;                       // already running
         poller = Executors.newSingleThreadScheduledExecutor();
