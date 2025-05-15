@@ -7,7 +7,19 @@ import java.awt.*;
 public class MainFrame extends JFrame {
 
     /* ---------- global constants ---------- */
-    public static final String USER_ID = "vol1";          // one id everywhere
+    public final class VolunteerIdentity {
+
+        /** generated once per JVM run */
+        private static final String ID = "vol" + System.nanoTime();   // e.g. vol1705412345678900
+
+        /** global accessor */
+        public static String id() {
+            return ID;
+        }
+
+        // private constructor → no one can instantiate this class
+        private VolunteerIdentity() {}
+    }
 
     static final Color PRIMARY   = new Color(0, 120, 215);
     static final Color SECONDARY = new Color(255, 182, 193);

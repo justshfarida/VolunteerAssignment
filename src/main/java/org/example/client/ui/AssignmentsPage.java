@@ -87,11 +87,17 @@ class AssignmentsPage extends JPanel {
         footer.add(runBtn);
         add(footer, BorderLayout.SOUTH);
 
-        /* ---------- live updates ---------- */
-        ClientAPI.setOnAssignmentReceived(json ->
-                SwingUtilities.invokeLater(() -> assignmentLbl.setText(json)));
 
-        ClientAPI.startPolling(MainFrame.USER_ID);
+
+        /* ---------- live updates ---------- */
+        ClientAPI.setOnAssignmentReceived(service ->
+                SwingUtilities.invokeLater(() -> {
+                    if (service == null || service.isBlank()) return;   // nothing new
+                    assignmentLbl.setText(service);                     // plain name
+                }));
+
+
+        ClientAPI.startPolling(MainFrame.VolunteerIdentity.id());
     }
 
     /* helper for a grey rounded card */
