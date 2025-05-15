@@ -11,6 +11,12 @@ public class Service {
         this.capacity = capacity;
     }
 
+    // Copy constructor
+    public Service(Service other) {
+        this.name = other.name;
+        this.capacity = other.capacity;
+    }
+
     public String getName() {
         return name;
     }
@@ -19,7 +25,6 @@ public class Service {
         return capacity;
     }
 
-    // Needed for .equals() and .indexOf() in lists
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

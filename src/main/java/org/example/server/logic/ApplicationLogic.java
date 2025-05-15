@@ -2,32 +2,49 @@ package org.example.server.logic;
 
 import org.example.domain.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ApplicationLogic {
 
-    private List<Volunteer> volunteers;
-    private List<Service> services;
+    // Thread-safe lock object for guarding optimization
+    private static final Object optimizationLock = new Object();
 
-    public ApplicationLogic(List<Service> services) {
-        this.volunteers = new ArrayList<>();
-        this.services = services;
-    }
-
-    public void addVolunteer(Volunteer v) {
-        volunteers.add(v);
-    }
-
-    public List<Assignment> runOptimization() {
-        if (volunteers.isEmpty() || services.isEmpty()) {
-            throw new IllegalStateException("Volunteers or services list is empty.");
+    // Main entry point: safe to call from any thread
+    public List<Assignment> runOptimization(List<Volunteer> volunteers, List<Service> services) {
+        if (volunteers == null || volunteers.isEmpty()) {
+            throw new IllegalArgumentException("Volunteer list is null or empty.");
         }
 
-        GeneticAlgorithm ga = new GeneticAlgorithm(volunteers, services);
-        return ga.optimize();
+        if (services == null || services.isEmpty()) {
+            throw new IllegalArgumentException("Service list is null or empty.");
+        }
+
+        // Deep copy to isolate data per thread
+        List<Volunteer> safeVolunteers = deepCopyVolunteers(volunteers);
+        List<Service> safeServices = deepCopyServices(services);
+
+        synchronized (optimizationLock) {
+            GeneticAlgorithm ga = new GeneticAlgorithm(safeVolunteers, safeServices);
+            return ga.optimize(); // this is thread-safe now
+        }
     }
 
-    public void reset() {
-        volunteers.clear();
+    // Clone the volunteers list to protect shared data
+    private List<Volunteer> deepCopyVolunteers(List<Volunteer> volunteers) {
+        List<Volunteer> copy = new ArrayList<>();
+        for (Volunteer v : volunteers) {
+            copy.add(new Volunteer(v)); // Uses your copy constructor
+        }
+        return copy;
+    }
+
+    // Clone the services list
+    private List<Service> deepCopyServices(List<Service> services) {
+        List<Service> copy = new ArrayList<>();
+        for (Service s : services) {
+            copy.add(new Service(s)); // Uses your copy constructor
+        }
+        return copy;
     }
 }

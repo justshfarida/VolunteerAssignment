@@ -40,11 +40,12 @@ public class ServerHandler {
             new Service("Disaster Relief", 3)
     );
 
-    private static final ApplicationLogic LOGIC =
-            new ApplicationLogic(SERVICES);
+    private static final ApplicationLogic LOGIC = new ApplicationLogic();
 
     private static final Map<String, Assignment> ASSIGNMENT_STORE =
             new ConcurrentHashMap<>();
+
+    private static final Map<String, Volunteer> VOLUNTEER_STORE = new ConcurrentHashMap<>();
 
     /* ---------- server bootstrap ---------- */
     public static void main(String[] args) throws IOException {
@@ -83,7 +84,7 @@ public class ServerHandler {
         List<Service> prefObjs = new ArrayList<>();
         p.prefs.forEach(n -> { if (byName.containsKey(n)) prefObjs.add(byName.get(n)); });
 
-        LOGIC.addVolunteer(new Volunteer(p.name, p.volunteerId, prefObjs));
+        VOLUNTEER_STORE.put(p.volunteerId, new Volunteer(p.name, p.volunteerId, prefObjs));
         send(ex, 200, "{\"status\":\"stored\"}");
     }
 
@@ -95,7 +96,9 @@ public class ServerHandler {
             ex.sendResponseHeaders(405, -1); return;
         }
         try {
-            List<Assignment> result = LOGIC.runOptimization();
+            List<Volunteer> allVolunteers = new ArrayList<>(VOLUNTEER_STORE.values());
+            List<Assignment> result = LOGIC.runOptimization(allVolunteers, SERVICES);
+
             ASSIGNMENT_STORE.clear();
             result.forEach(a -> ASSIGNMENT_STORE.put(a.getVolunteer().getId(), a));
             send(ex, 200, "{\"status\":\"optimized\"}");
