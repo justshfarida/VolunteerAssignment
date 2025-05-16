@@ -1,131 +1,221 @@
 package org.example.client.ui;
 
 import org.example.client.api.ClientAPI;
-
 import javax.swing.*;
 import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * The volunteer preferences form - where users select their top 5 activity choices
+ * Designed with a clean, minimalist look that matches the AssignmentsPage style
+ */
 class PreferencesPage extends JPanel {
+    // ========== DESIGN CONSTANTS ==========
+    private static final int OUTER_PADDING = 30;    // Space around edges
+    private static final int INNER_PADDING = 25;    // Space inside cards
+    private static final int VERTICAL_SPACING = 20; // Space between sections
+    private static final Color BACKGROUND = Color.WHITE; // Pure white background
+    private static final Color CARD_BACKGROUND = new Color(245, 245, 245); // Light gray for cards
+    private static final Color BUTTON_COLOR = new Color(43, 234, 240); // Teal action button
+    private static final Color HEADER_BG = new Color(220, 235, 245); // Light blue header
 
-    private final MainFrame frame;
+    // ========== COMPONENTS ==========
+    private final MainFrame frame;          // Reference to main window
+    private final JTextField nameField;     // For volunteer's name input
+    private final JComboBox<String>[] boxes = new JComboBox[5]; // The 5 preference dropdowns
+    private static final List<String> lastSubmitted = new CopyOnWriteArrayList<>(); // Stores submitted prefs
 
-    private final JTextField nameField = new JTextField(20);
-    @SuppressWarnings("unchecked")
-    private final JComboBox<String>[] boxes = new JComboBox[5];
-
-    /* cache of last prefs so AssignmentPage can show them */
-    private static final List<String> lastSubmitted = new CopyOnWriteArrayList<>();
-
-    /* --------------------------------------------------- */
+    // ========== INITIALIZATION ==========
+    /**
+     * Sets up the entire preferences form
+     * @param f The main application window (for navigation between pages)
+     */
     PreferencesPage(MainFrame f) {
         this.frame = f;
-        setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
-        setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
+        this.nameField = new JTextField(20);
+        
+        setupPageLayout();
+        add(createHeader(), BorderLayout.NORTH);
+        add(createFormContent(), BorderLayout.CENTER);
+        add(createSubmitButton(), BorderLayout.SOUTH);
+    }
 
-        /* ---------- title ---------- */
+    // ========== PAGE STRUCTURE ==========
+    private void setupPageLayout() {
+        setLayout(new BorderLayout());
+        setBackground(BACKGROUND);
+        setBorder(BorderFactory.createEmptyBorder(
+            OUTER_PADDING, OUTER_PADDING, 
+            OUTER_PADDING, OUTER_PADDING));
+    }
+
+    // ========== HEADER SECTION ==========
+    private JPanel createHeader() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(HEADER_BG);
+        header.setBorder(BorderFactory.createEmptyBorder(
+            VERTICAL_SPACING, INNER_PADDING, 
+            VERTICAL_SPACING, INNER_PADDING));
+        
         JLabel title = new JLabel("Your Volunteer Preferences");
         title.setFont(MainFrame.TITLE_FONT);
-        add(title, BorderLayout.NORTH);
+        title.setHorizontalAlignment(SwingConstants.CENTER);
+        header.add(title, BorderLayout.CENTER);
+        return header;
+    }
 
-        /* ---------- form ---------- */
-        JPanel form = new JPanel();
-        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        form.setBackground(Color.WHITE);
+    // ========== MAIN FORM CONTENT ==========
+    private JComponent createFormContent() {
+        JPanel formContainer = new JPanel();
+        formContainer.setLayout(new BoxLayout(formContainer, BoxLayout.Y_AXIS));
+        formContainer.setBackground(BACKGROUND);
+        formContainer.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
 
-        /* name row */
-        JPanel nameRow = makeRow("Your Name");
-        nameRow.add(nameField);
-        form.add(nameRow);
-        form.add(Box.createRigidArea(new Dimension(0, 20)));
+        // Name input field
+        formContainer.add(createInputCard("Your Name", nameField));
+        formContainer.add(Box.createRigidArea(new Dimension(0, VERTICAL_SPACING)));
 
-        /* 5 preference rows */
-        String[] labs = {"First", "Second", "Third", "Fourth", "Fifth"};
+        // Create five preference dropdowns
+        String[] preferenceLabels = {"First", "Second", "Third", "Fourth", "Fifth"};
         for (int i = 0; i < 5; i++) {
-            boxes[i] = new JComboBox<>(ClientAPI.getAllServices());
-            boxes[i].setPreferredSize(new Dimension(300, 30));
-            JPanel row = makeRow(labs[i] + " Choice");
-            row.add(boxes[i]);
-            form.add(row);
-            form.add(Box.createRigidArea(new Dimension(0, 10)));
+            boxes[i] = createServiceDropdown();
+            formContainer.add(createInputCard(preferenceLabels[i] + " Choice", boxes[i]));
+            if (i < 4) formContainer.add(Box.createRigidArea(new Dimension(0, 8)));
         }
 
-        add(new JScrollPane(form), BorderLayout.CENTER);
-
-        /* ---------- submit button ---------- */
-        JButton submit = styledButton("Submit Preferences", this::handleSubmit);
-        JPanel south = new JPanel();
-        south.setBackground(Color.WHITE);
-        south.add(submit);
-        add(south, BorderLayout.SOUTH);
+        JScrollPane scrollPane = new JScrollPane(formContainer);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(BACKGROUND);
+        return scrollPane;
     }
 
-    /* --------------------------------------------------- */
-    private JPanel makeRow(String label) {
-        JPanel r = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        r.setBackground(Color.WHITE);
-
-        JLabel l = new JLabel(label);
-        l.setPreferredSize(new Dimension(120, 30));
-        l.setFont(MainFrame.TEXT_FONT);
-        r.add(l);
-
-        return r;
+    private JComboBox<String> createServiceDropdown() {
+        JComboBox<String> dropdown = new JComboBox<>(ClientAPI.getAllServices());
+        dropdown.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        dropdown.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        dropdown.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+        return dropdown;
     }
 
-    private JButton styledButton(String txt, Runnable action) {
-        JButton b = new JButton(txt);
-        b.setBackground(MainFrame.PRIMARY);
-        b.setForeground(Color.WHITE);
-        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        b.setFocusPainted(false);
-        b.setBorderPainted(false);
-        b.setPreferredSize(new Dimension(200, 40));
+    private JPanel createInputCard(String label, JComponent input) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(CARD_BACKGROUND);
+        card.setBorder(BorderFactory.createEmptyBorder(
+            INNER_PADDING, INNER_PADDING,
+            INNER_PADDING, INNER_PADDING));
+        card.setMaximumSize(new Dimension(600, Integer.MAX_VALUE));
 
-        b.addActionListener(e -> action.run());
-        b.addMouseListener(new java.awt.event.MouseAdapter() {
+        JLabel titleLabel = new JLabel(label);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(titleLabel);
+        card.add(Box.createRigidArea(new Dimension(0, 8)));
+
+        input.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        input.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(input);
+
+        return card;
+    }
+
+    // ========== SUBMIT BUTTON ==========
+    private JPanel createSubmitButton() {
+        JButton submit = createRoundedButton(
+            "Submit Preferences", 
+            BUTTON_COLOR, 
+            this::handleSubmit
+        );
+        
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setBackground(BACKGROUND);
+        buttonPanel.add(submit);
+        return buttonPanel;
+    }
+
+    private JButton createRoundedButton(String text, Color bgColor, Runnable action) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D)g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2.dispose();
+                
+                FontMetrics fm = g.getFontMetrics();
+                int x = (getWidth() - fm.stringWidth(getText())) / 2;
+                int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                g.drawString(getText(), x, y);
+            }
+
+            @Override
+            public Dimension getPreferredSize() {
+                FontMetrics fm = getFontMetrics(getFont());
+                return new Dimension(fm.stringWidth(getText()) + 40, 40);
+            }
+
+            @Override
+            public boolean contains(int x, int y) {
+                return new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 12, 12).contains(x, y);
+            }
+        };
+        
+        button.setOpaque(false);
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setBackground(bgColor);
+        button.setForeground(Color.WHITE);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent e) {
-                b.setBackground(MainFrame.PRIMARY.darker());
+                button.setBackground(bgColor.darker());
             }
             public void mouseExited(java.awt.event.MouseEvent e) {
-                b.setBackground(MainFrame.PRIMARY);
+                button.setBackground(bgColor);
             }
         });
-        return b;
+        
+        button.addActionListener(e -> action.run());
+        return button;
     }
 
-    /* --------------------------------------------------- */
+    // ========== FORM SUBMISSION ==========
     private void handleSubmit() {
         String name = nameField.getText().trim();
         if (name.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter your name");
+            showError("Please enter your name");
             return;
         }
 
-        /* collect prefs */
         lastSubmitted.clear();
         Set<String> seen = new HashSet<>();
         for (JComboBox<String> box : boxes) {
-            String sel = (String) box.getSelectedItem();
-            if (sel != null && seen.add(sel))
-                lastSubmitted.add(sel);
+            String selection = (String) box.getSelectedItem();
+            if (selection != null && seen.add(selection)) {
+                lastSubmitted.add(selection);
+            }
         }
+        
         if (lastSubmitted.size() < 5) {
-            JOptionPane.showMessageDialog(this, "Select 5 unique choices");
+            showError("Please select 5 unique choices");
             return;
         }
 
-        /* send to server */
         ClientAPI.sendPreferences(MainFrame.VolunteerIdentity.id(), name, lastSubmitted);
-
-        JOptionPane.showMessageDialog(this, "Preferences stored!");
-        frame.showPage("assign");                 // go to assignments
+        JOptionPane.showMessageDialog(this, "Preferences saved successfully!");
+        frame.showPage("assign"); // Navigate to assignments page
     }
 
-    /* called by AssignmentPage */
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(this, message, "Input Needed", JOptionPane.WARNING_MESSAGE);
+    }
+
+    // ========== DATA ACCESS ==========
     static List<String> getLastPrefs() {
         return List.copyOf(lastSubmitted);
     }
