@@ -9,35 +9,95 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
- * Web-socket endpoint:   ws://localhost:8081
+ * WebSocket endpoint for broadcasting assignment updates to all connected clients.
+ * Listens on ws://localhost:8081
  */
 public class AssignmentWebSocketServer extends WebSocketServer {
 
-    /* -------------------------------------------------- */
-    /** singleton reference so other classes can reach us */
-    public  static AssignmentWebSocketServer instance;
+    /**
+     * Singleton instance reference so that HTTP handlers (in ServerHandler)
+     * can access this server to broadcast messages.
+     */
+    public static AssignmentWebSocketServer instance;
 
-    /** every open socket */
+    /**
+     * Thread-safe set of all currently open WebSocket connections (peers).
+     * CopyOnWriteArraySet allows safe iteration/broadcast without explicit locking.
+     */
     private static final Set<WebSocket> peers = new CopyOnWriteArraySet<>();
 
-    /* -------------------------------------------------- */
+    /**
+     * Constructor: binds the WebSocketServer to the given port
+     * and sets the static instance reference.
+     *
+     * @param port the TCP port to listen on (e.g. 8081)
+     */
     public AssignmentWebSocketServer(int port) {
         super(new InetSocketAddress(port));
-        instance = this;                // <-- keep global handle
+        instance = this;  // store global handle for static access elsewhere
     }
 
-    @Override public void onOpen (WebSocket c, ClientHandshake h){ peers.add(c); }
-    @Override public void onClose(WebSocket c,int code,String r,boolean remote){ peers.remove(c); }
-    @Override public void onError(WebSocket c,Exception ex){ ex.printStackTrace(); }
-    @Override public void onMessage(WebSocket c,String msg){ /* server is write-only */ }
-    @Override public void onStart(){ System.out.println("✅ WS server on :8081"); }
+    /**
+     * Called when a new client successfully opens a WebSocket connection.
+     * We add the WebSocket to our peers set so we can broadcast to it later.
+     */
+    @Override
+    public void onOpen(WebSocket socket, ClientHandshake handshake) {
+        peers.add(socket);
+    }
 
-    /* -------------------------------------------------- */
-    /** Broadcast helper the HTTP handlers can call. */
-    public static void broadcastToAll(String msg){
-        // no server yet? => nothing to do
+    /**
+     * Called when a client connection is closed (cleanly or abnormally).
+     * We remove it from our peers set.
+     */
+    @Override
+    public void onClose(WebSocket socket, int code, String reason, boolean remote) {
+        peers.remove(socket);
+    }
+
+    /**
+     * Called when an error occurs on a connection.
+     * We simply log the stack trace.
+     */
+    @Override
+    public void onError(WebSocket socket, Exception ex) {
+        ex.printStackTrace();
+    }
+
+    /**
+     * Called when a message is received from a client.
+     * In this application we don't expect inbound messages, so this is a no-op.
+     */
+    @Override
+    public void onMessage(WebSocket socket, String message) {
+        // Server is write-only; ignore any client messages
+    }
+
+    /**
+     * Called once the server has been set up and is ready to accept connections.
+     * We print a confirmation to standard output.
+     */
+    @Override
+    public void onStart() {
+        System.out.println("✅ WS server on :8081");
+    }
+
+    /**
+     * Broadcast a text message to all connected clients.
+     * HTTP handlers should call this method whenever an assignment update
+     * needs to be pushed out in real-time.
+     *
+     * @param msg the JSON-encoded message to send
+     */
+    public static void broadcastToAll(String msg) {
+        // If the server hasn't been instantiated yet, there's nothing to broadcast
         if (instance == null) return;
 
-        peers.forEach(ws -> { if (ws.isOpen()) ws.send(msg); });
+        // Send to each open WebSocket
+        for (WebSocket ws : peers) {
+            if (ws.isOpen()) {
+                ws.send(msg);
+            }
+        }
     }
 }
