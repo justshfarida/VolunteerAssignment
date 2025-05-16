@@ -2,6 +2,7 @@ package org.example.client.api;
 
 import com.google.gson.Gson;           // For JSON serialization/deserialization
 import com.google.gson.JsonObject;
+import org.java_websocket.handshake.ServerHandshake;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -173,4 +174,45 @@ public class ClientAPI {
      * Structure used for JSON payload to /preferences
      */
     private record Payload(String volunteerId, String name, List<String> prefs) {}
+
+    // inside ClientAPI
+    /* ---------------- websocket push ---------------- */
+    private static org.java_websocket.client.WebSocketClient ws;
+
+    public static void connectWebSocket(String id){           // call once from UI
+        if (ws!=null && ws.isOpen()) return;
+
+        try {
+            ws = new org.java_websocket.client.WebSocketClient(
+                    new java.net.URI("ws://localhost:8081")) {
+
+                @Override
+                public void onOpen(ServerHandshake serverHandshake) {
+
+                }
+
+                @Override public void onMessage(String msg){
+                    try{
+                        JsonObject o = G.fromJson(msg, JsonObject.class);
+                        if (o.has("volunteerId") && o.has("assignment")
+                                && id.equals(o.get("volunteerId").getAsString())) {
+                            ClientAPI.notify(msg);                      // reuse existing path
+                        }
+                    }catch(Exception ignore){}
+                }
+
+                @Override
+                public void onClose(int i, String s, boolean b) {
+
+                }
+
+                @Override
+                public void onError(Exception e) {
+
+                }
+            };
+            ws.connect();
+        } catch (Exception e){ e.printStackTrace(); }
+    }
+
 }

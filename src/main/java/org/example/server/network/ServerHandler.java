@@ -13,25 +13,24 @@ import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 /**
- * Multithreaded HTTP server for the Volunteer Matching System.
+ * Multithreaded HTTP server for the Volunteer Matching System,
+ * plus a WebSocket server for broadcasting live assignment updates.
  *
- * Supports three endpoints:
- * - POST /preferences     → receive and store volunteer preferences
- * - POST /optimize        → run the genetic algorithm and compute assignments
- * - GET  /assignment?id=  → return the assigned service (if any)
+ * REST endpoints:
+ *   POST /preferences     → receive & store volunteer preferences
+ *   POST /optimize        → run GA & store assignments (then broadcast via WS)
+ *   GET  /assignment?volunteerId=  → return the assignment JSON or 404
  *
- * In-memory, no database is used.
+ * In‐memory only (no persistence).
  */
 public class ServerHandler {
 
     /* ---------- Configuration ---------- */
+    private static final int HTTP_PORT = 8080;
+    private static final int WS_PORT   = 8081;
+    private static final Gson G        = new Gson();
 
-    private static final int PORT = 8080;           // server port
-    private static final Gson G = new Gson();       // JSON utility
-
-    /* ---------- Static Data (In-Memory State) ---------- */
-
-    // Fixed list of service types and capacities
+    /* ---------- In‐Memory State ---------- */
     private static final List<Service> SERVICES = List.of(
             new Service("Soup Kitchen",    6),
             new Service("Animal Shelter",  4),
@@ -45,156 +44,159 @@ public class ServerHandler {
             new Service("Disaster Relief", 3)
     );
 
-    // Optimization logic module
+    // Our optimization engine – no‐arg constructor
     private static final ApplicationLogic LOGIC = new ApplicationLogic();
 
-    // Maps volunteer ID → final assignment (after optimization)
-    private static final Map<String, Assignment> ASSIGNMENT_STORE = new ConcurrentHashMap<>();
+    // volunteerId → Volunteer (with name+prefs)
+    private static final Map<String, Volunteer> VOLUNTEER_STORE =
+            new ConcurrentHashMap<>();
 
-    // Maps volunteer ID → volunteer object (with name + preferences)
-    private static final Map<String, Volunteer> VOLUNTEER_STORE = new ConcurrentHashMap<>();
+    // volunteerId → Assignment (after optimize)
+    private static final Map<String, Assignment> ASSIGNMENT_STORE =
+            new ConcurrentHashMap<>();
 
-
-    /* ---------- Server Bootstrap ---------- */
-
+    /* ---------- Bootstrap HTTP + WS ---------- */
     public static void main(String[] args) throws IOException {
-        // Create HTTP server instance
-        HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
+        // 1) start HTTP server
+        HttpServer http = HttpServer.create(new InetSocketAddress(HTTP_PORT), 0);
+        http.createContext("/preferences", ServerHandler::handlePrefs);
+        http.createContext("/optimize",    ServerHandler::handleOptimize);
+        http.createContext("/assignment",  ServerHandler::handleAssignment);
 
-        // Register endpoints
-        server.createContext("/preferences", ServerHandler::handlePrefs);
-        server.createContext("/optimize",    ServerHandler::handleOptimize);
-        server.createContext("/assignment",  ServerHandler::handleAssignment);
-
-        // Multi-threaded pool for concurrent clients
         int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
-        server.setExecutor(Executors.newFixedThreadPool(threads));
+        http.setExecutor(Executors.newFixedThreadPool(threads));
+        http.start();
+        System.out.printf("HTTP server on http://localhost:%d (%d threads)%n",
+                HTTP_PORT, threads);
 
-        // Start server
-        server.start();
-        System.out.printf("Server running on http://localhost:%d (%d threads)%n", PORT, threads);
+        // 2) start WebSocket server for live broadcasts
+        new AssignmentWebSocketServer(WS_PORT).start();
+        System.out.printf("WebSocket server on ws://localhost:%d%n", WS_PORT);
     }
 
-    /* =================== ENDPOINT HANDLERS =================== */
+    /* ========== REST Handlers ========== */
 
-    /**
-     * POST /preferences
-     * Receives a JSON body with volunteerId, name, and a list of preferences.
-     * Example payload:
-     * {
-     *   "volunteerId": "vol123",
-     *   "name": "Alice",
-     *   "prefs": ["Soup Kitchen", "Library Assistant", "Senior Care"]
-     * }
-     */
+    /** POST /preferences */
     private static void handlePrefs(HttpExchange ex) throws IOException {
-        System.out.println("🔵 " + ex.getRequestMethod() + " " + ex.getRequestURI());
-
-        // Only allow POST
-        if (!ex.getRequestMethod().equalsIgnoreCase("POST")) {
-            ex.sendResponseHeaders(405, -1); return;
+        logRequest(ex);
+        if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(405, -1);
+            return;
         }
 
-        // Parse JSON payload into PrefPayload
         PrefPayload p = G.fromJson(readBody(ex), PrefPayload.class);
-        if (p == null || p.volunteerId == null || p.name == null || p.prefs == null || p.prefs.size() < 3) {
-            send(ex, 400, "{\"error\":\"bad payload\"}"); return;
+        if (p == null
+                || p.volunteerId == null
+                || p.name == null
+                || p.prefs == null
+                || p.prefs.size() < 3) {
+            sendJson(ex, 400, Map.of("error", "bad payload"));
+            return;
         }
 
-        // Convert string preferences → Service objects
+        // map names → Service objects
         Map<String, Service> byName = SERVICES.stream()
                 .collect(Collectors.toMap(Service::getName, s -> s));
         List<Service> prefObjs = new ArrayList<>();
         for (String name : p.prefs) {
-            if (byName.containsKey(name)) prefObjs.add(byName.get(name));
+            Service svc = byName.get(name);
+            if (svc != null) prefObjs.add(svc);
         }
 
-        // Store the volunteer in memory
-        VOLUNTEER_STORE.put(p.volunteerId, new Volunteer(p.name, p.volunteerId, prefObjs));
-        send(ex, 200, "{\"status\":\"stored\"}");
+        // store in‐memory; ApplicationLogic no longer holds volunteers
+        VOLUNTEER_STORE.put(p.volunteerId,
+                new Volunteer(p.name, p.volunteerId, prefObjs));
+
+        sendJson(ex, 200, Map.of("status", "stored"));
     }
 
-    /**
-     * POST /optimize
-     * Runs the genetic algorithm with all stored volunteers and services,
-     * then stores the resulting assignments.
-     */
+    /** POST /optimize */
     private static void handleOptimize(HttpExchange ex) throws IOException {
-        System.out.println("🔵 " + ex.getRequestMethod() + " " + ex.getRequestURI());
-
-        // Only allow POST
-        if (!ex.getRequestMethod().equalsIgnoreCase("POST")) {
-            ex.sendResponseHeaders(405, -1); return;
-        }
-
-        try {
-            List<Volunteer> allVolunteers = new ArrayList<>(VOLUNTEER_STORE.values());
-
-            // Run the optimization
-            List<Assignment> result = LOGIC.runOptimization(allVolunteers, SERVICES);
-
-            // Clear old assignments and store new ones
-            ASSIGNMENT_STORE.clear();
-            for (Assignment a : result) {
-                ASSIGNMENT_STORE.put(a.getVolunteer().getId(), a);
-            }
-
-            send(ex, 200, "{\"status\":\"optimized\"}");
-        } catch (Exception e) {
-            send(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
-        }
-    }
-
-    /**
-     * GET /assignment?volunteerId=XYZ
-     * Looks up the assignment for the given ID and returns:
-     *  - {"assignment": "Service Name"} if found
-     *  - 404 {"error": "not found"} if not
-     */
-    private static void handleAssignment(HttpExchange ex) throws IOException {
-        System.out.println("🔵 " + ex.getRequestMethod() + " " + ex.getRequestURI());
-
-        // Only allow GET
-        if (!ex.getRequestMethod().equalsIgnoreCase("GET")) {
-            ex.sendResponseHeaders(405, -1); return;
-        }
-
-        // Parse volunteerId from URL query
-        String q = ex.getRequestURI().getQuery();
-        String id = (q != null && q.startsWith("volunteerId=")) ? q.substring(12) : null;
-
-        // Lookup assignment by ID
-        Assignment a = (id != null) ? ASSIGNMENT_STORE.get(id) : null;
-        if (a == null) {
-            send(ex, 404, "{\"error\":\"not found\"}");
+        logRequest(ex);
+        if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(405, -1);
             return;
         }
 
-        // Return assigned service
-        send(ex, 200, G.toJson(Map.of("assignment", a.getService().getName())));
-    }
+        try {
+            // gather all volunteers from the store
+            List<Volunteer> allVols = new ArrayList<>(VOLUNTEER_STORE.values());
 
-    /* =================== UTILITY METHODS =================== */
+            // run the GA over deep‐copies inside ApplicationLogic
+            List<Assignment> results =
+                    LOGIC.runOptimization(allVols, SERVICES);
 
-    /**
-     * Reads the full request body and returns it as a UTF-8 string
-     */
-    private static String readBody(HttpExchange ex) throws IOException {
-        return new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-    }
+            // replace old assignments
+            ASSIGNMENT_STORE.clear();
+            for (Assignment a : results) {
+                ASSIGNMENT_STORE.put(a.getVolunteer().getId(), a);
+            }
 
-    /**
-     * Sends a JSON response with the given HTTP status code
-     */
-    private static void send(HttpExchange ex, int code, String json) throws IOException {
-        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
-        ex.getResponseHeaders().add("Content-Type", "application/json; charset=utf-8");
-        ex.sendResponseHeaders(code, bytes.length);
-        try (OutputStream os = ex.getResponseBody()) {
-            os.write(bytes);
+            // broadcast each assignment via WebSocket
+            for (Assignment a : results) {
+                String msg = G.toJson(Map.of(
+                        "volunteerId", a.getVolunteer().getId(),
+                        "assignment",  a.getService().getName()
+                ));
+                AssignmentWebSocketServer.broadcastToAll(msg);
+            }
+
+            sendJson(ex, 200, Map.of("status", "optimized"));
+        } catch (Exception e) {
+            sendJson(ex, 500, Map.of("error", e.getMessage()));
         }
     }
 
-    /* Payload structure used for /preferences POST endpoint */
-    private record PrefPayload(String volunteerId, String name, List<String> prefs) {}
+    /** GET /assignment?volunteerId=XYZ */
+    private static void handleAssignment(HttpExchange ex) throws IOException {
+        logRequest(ex);
+        if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(405, -1);
+            return;
+        }
+
+        String q  = ex.getRequestURI().getQuery();
+        String id = (q != null && q.startsWith("volunteerId="))
+                ? q.substring("volunteerId=".length())
+                : null;
+
+        Assignment a = (id != null) ? ASSIGNMENT_STORE.get(id) : null;
+        if (a == null) {
+            sendJson(ex, 404, Map.of("error", "not found"));
+        } else {
+            sendJson(ex, 200,
+                    Map.of("assignment", a.getService().getName()));
+        }
+    }
+
+    /* ========== Utility Methods ========== */
+
+    private static void logRequest(HttpExchange ex) {
+        System.out.printf("🔵 %s %s%n",
+                ex.getRequestMethod(), ex.getRequestURI());
+    }
+
+    private static String readBody(HttpExchange ex) throws IOException {
+        return new String(ex.getRequestBody().readAllBytes(),
+                StandardCharsets.UTF_8);
+    }
+
+    private static void sendJson(HttpExchange ex,
+                                 int code,
+                                 Map<String,?> obj) throws IOException {
+        byte[] out = G.toJson(obj).getBytes(StandardCharsets.UTF_8);
+        ex.getResponseHeaders().add(
+                "Content-Type", "application/json; charset=utf-8");
+        ex.sendResponseHeaders(code, out.length);
+        try (OutputStream os = ex.getResponseBody()) {
+            os.write(out);
+        }
+    }
+
+    /** JSON payload structure for /preferences */
+    private record PrefPayload(
+            String volunteerId,
+            String name,
+            List<String> prefs
+    ) {}
 }

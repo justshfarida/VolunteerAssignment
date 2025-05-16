@@ -48,8 +48,8 @@ class AssignmentsPage extends JPanel {
         setBackground(BACKGROUND);
         // Padding only - no visible border
         setBorder(BorderFactory.createEmptyBorder(
-            OUTER_PADDING, OUTER_PADDING, 
-            OUTER_PADDING, OUTER_PADDING));
+                OUTER_PADDING, OUTER_PADDING,
+                OUTER_PADDING, OUTER_PADDING));
     }
 
     // ========== HEADER SECTION ==========
@@ -61,9 +61,9 @@ class AssignmentsPage extends JPanel {
         header.setBackground(HEADER_BG);
         // Padding only - no border
         header.setBorder(BorderFactory.createEmptyBorder(
-            VERTICAL_SPACING/3, INNER_PADDING, 
-            VERTICAL_SPACING/3, INNER_PADDING));
-        
+                VERTICAL_SPACING/3, INNER_PADDING,
+                VERTICAL_SPACING/3, INNER_PADDING));
+
         JLabel title = new JLabel("Your Assignment");
         title.setFont(MainFrame.TITLE_FONT);
         title.setHorizontalAlignment(SwingConstants.CENTER);
@@ -104,15 +104,15 @@ class AssignmentsPage extends JPanel {
         card.setBackground(CARD_BACKGROUND);
         // No border - just padding
         card.setBorder(BorderFactory.createEmptyBorder(
-            INNER_PADDING, INNER_PADDING, 
-            INNER_PADDING, INNER_PADDING));
+                INNER_PADDING, INNER_PADDING,
+                INNER_PADDING, INNER_PADDING));
         card.setMaximumSize(new Dimension(600, 120));
 
         JLabel title = new JLabel("Current Assignment:");
         title.setFont(new Font("Segoe UI", Font.BOLD, 16));
 
         assignmentLbl.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        
+
         JPanel textColumn = new JPanel();
         textColumn.setLayout(new BoxLayout(textColumn, BoxLayout.Y_AXIS));
         textColumn.setBackground(CARD_BACKGROUND);
@@ -132,8 +132,8 @@ class AssignmentsPage extends JPanel {
         card.setBackground(CARD_BACKGROUND);
         // No border - just padding
         card.setBorder(BorderFactory.createEmptyBorder(
-            INNER_PADDING, INNER_PADDING, 
-            INNER_PADDING, INNER_PADDING));
+                INNER_PADDING, INNER_PADDING,
+                INNER_PADDING, INNER_PADDING));
         card.setMaximumSize(new Dimension(600, 250));
 
         JLabel title = new JLabel("Your Preferences:");
@@ -160,11 +160,11 @@ class AssignmentsPage extends JPanel {
      */
     private JPanel createFooter() {
         JButton optimizeBtn = createRoundedButton(
-            "Run Optimization", 
-            BUTTON_COLOR, 
-            ClientAPI::triggerOptimization
+                "Run Optimization",
+                BUTTON_COLOR,
+                ClientAPI::triggerOptimization
         );
-        
+
         JPanel footer = new JPanel();
         footer.setBackground(BACKGROUND);
         footer.add(optimizeBtn);
@@ -183,7 +183,7 @@ class AssignmentsPage extends JPanel {
                 g2.setColor(getBackground());
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
                 g2.dispose();
-                
+
                 FontMetrics fm = g.getFontMetrics();
                 int x = (getWidth() - fm.stringWidth(getText())) / 2;
                 int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
@@ -201,14 +201,14 @@ class AssignmentsPage extends JPanel {
                 return new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 12, 12).contains(x, y);
             }
         };
-        
+
         button.setOpaque(false);
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
         button.setBackground(bgColor);
         button.setForeground(Color.WHITE);
         button.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        
+
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent e) {
                 button.setBackground(bgColor.darker());
@@ -217,7 +217,7 @@ class AssignmentsPage extends JPanel {
                 button.setBackground(bgColor);
             }
         });
-        
+
         button.addActionListener(e -> action.run());
         return button;
     }
@@ -229,13 +229,14 @@ class AssignmentsPage extends JPanel {
     private void setupLiveUpdates() {
         // Update assignment when new one comes from server
         ClientAPI.setOnAssignmentReceived(service ->
-            SwingUtilities.invokeLater(() -> {
-                if (service == null || service.isBlank()) return;
-                assignmentLbl.setText(service);
-            }));
+                SwingUtilities.invokeLater(() -> {
+                    if (service == null || service.isBlank()) return;
+                    assignmentLbl.setText(service);
+                }));
 
         // Start polling for updates
-        ClientAPI.startPolling(MainFrame.VolunteerIdentity.id());
+        // 2) instead of polling, open a persistent WebSocket
+        ClientAPI.connectWebSocket(MainFrame.VolunteerIdentity.id());
     }
 
     // ========== DATA REFRESH ==========
@@ -246,15 +247,15 @@ class AssignmentsPage extends JPanel {
     void refreshPrefsBox() {
         List<String> preferences = PreferencesPage.getLastPrefs();
         StringBuilder formattedPrefs = new StringBuilder();
-        
+
         // Format preferences as numbered list
         for (int i = 0; i < preferences.size(); i++) {
             formattedPrefs.append(i + 1)
-                         .append(". ")
-                         .append(preferences.get(i))
-                         .append('\n');
+                    .append(". ")
+                    .append(preferences.get(i))
+                    .append('\n');
         }
-        
+
         prefsArea.setText(formattedPrefs.toString());
     }
 }
